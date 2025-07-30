@@ -1,24 +1,23 @@
+
 import SwiftUI
 import AVFoundation
 import Vision
 
 struct ContentView: View {
-    @State private var scannedString: String = "Scan a QR code or barcode"
+    @State private var scannedStrings: [String] = []
     @State private var isScanning: Bool = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
             if isScanning {
-                ScannerView(scannedString: $scannedString, isScanning: $isScanning)
+                ScannerView(scannedStrings: $scannedStrings, isScanning: $isScanning)
                     .edgesIgnoringSafeArea(.all)
             }
-
             VStack(spacing: 16) {
-                Text(scannedString)
+                Text("Scan a barcode")
                     .padding()
                     .background(.ultraThinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
-
                 Button(isScanning ? "Stop Scan" : "Start Scan") {
                     isScanning.toggle()
                 }
@@ -26,6 +25,14 @@ struct ContentView: View {
                 .background(isScanning ? Color.red : Color.blue)
                 .foregroundColor(.white)
                 .clipShape(Capsule())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(scannedStrings, id: \.self) { code in
+                        Text(code)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             .padding()
         }
@@ -33,7 +40,7 @@ struct ContentView: View {
 }
 
 struct ScannerView: UIViewControllerRepresentable {
-    @Binding var scannedString: String
+    @Binding var scannedStrings: [String]
     @Binding var isScanning: Bool
 
     func makeUIViewController(context: Context) -> UIViewController {
@@ -82,18 +89,20 @@ struct ScannerView: UIViewControllerRepresentable {
         }
 
         func updateSession(isScanning: Bool) {
-            if isScanning && !captureSession.isRunning {
-                captureSession.startRunning()
-            } else if !isScanning && captureSession.isRunning {
-                captureSession.stopRunning()
+            DispatchQueue.global(qos: .userInitiated).async {
+                if isScanning && !self.captureSession.isRunning {
+                    self.captureSession.startRunning()
+                } else if !isScanning && self.captureSession.isRunning {
+                    self.captureSession.stopRunning()
+                }
             }
         }
-
         func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
             guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
             detectBarcode(in: pixelBuffer)
         }
 
+        
         func detectBarcode(in pixelBuffer: CVPixelBuffer) {
             let request = VNDetectBarcodesRequest()
             let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
@@ -101,12 +110,10 @@ struct ScannerView: UIViewControllerRepresentable {
             do {
                 try handler.perform([request])
                 if let results = request.results, let payload = results.first?.payloadStringValue {
-                    Task {
+                    DispatchQueue.main.async {
                         AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
-                        await MainActor.run {
-                            self.parent.scannedString = payload
-                            self.parent.isScanning = false // Stop scan after detection
-                        }
+                        self.parent.scannedStrings.append(payload)
+                        self.parent.isScanning = false // Stop scan after detection
                     }
                 }
             } catch {
