@@ -3,17 +3,46 @@ import SwiftUI
 import AVFoundation
 import Vision
 
-struct ContentView: View {
-    @State private var scannedStrings: [String] = []
-    @State private var isScanning: Bool = false
+struct ScannedItem: Identifiable, Hashable {
+    let id = UUID()
+    let code: String
+    var name: String
+    var quantity: Int
+}
 
+
+struct ContentView: View {
+    @State private var scannedItems: [ScannedItem] = []
+    @State private var pendingCode: String? = nil
+    @State private var isNaming: Bool = false
+    @State private var newName: String = ""
+    @State private var newQuantity: String = ""
+    @State private var isScanning: Bool = false
+    
+    
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack() {
             if isScanning {
-                ScannerView(scannedStrings: $scannedStrings, isScanning: $isScanning)
-                    .edgesIgnoringSafeArea(.all)
+                ScannerView(
+                    scannedItems: $scannedItems,
+                    isScanning: $isScanning,
+                    pendingCode: $pendingCode,
+                    isNaming: $isNaming
+                )        .edgesIgnoringSafeArea(.all)
             }
             VStack(spacing: 16) {
+                Text("Calver Scanner")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.primary)
+                    .padding()
+                Image(systemName: "barcode.viewfinder")
+                    .font(.system(size: 94))
+                    .foregroundColor(.blue)
+//                    .padding()
+                
+                Spacer()
+                    
                 Text("Scan a barcode")
                     .padding()
                     .background(.ultraThinMaterial)
@@ -27,11 +56,33 @@ struct ContentView: View {
                 .clipShape(Capsule())
 
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(scannedStrings, id: \.self) { code in
-                        Text(code)
+                    ForEach(scannedItems) { item in
+                        Text("\(item.name) (\(item.quantity)): \(item.code)")
                             .font(.footnote)
                             .foregroundColor(.secondary)
                     }
+                }
+                .sheet(isPresented: $isNaming) {
+                    VStack {
+                        Text("Name this item")
+                        TextField("Item name", text: $newName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        TextField("Quantity", text: $newQuantity)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        Button("Save") {
+                            if let code = pendingCode, let qty = Int(newQuantity) {
+                                scannedItems.append(ScannedItem(code: code, name: newName, quantity: qty))
+                            }
+                            newName = ""
+                            newQuantity = ""
+                            pendingCode = nil
+                            isNaming = false
+                        }
+                        .disabled(newName.isEmpty || Int(newQuantity) == nil)
+                        .padding()
+                    }
+                    .padding()
                 }
             }
             .padding()
@@ -40,8 +91,10 @@ struct ContentView: View {
 }
 
 struct ScannerView: UIViewControllerRepresentable {
-    @Binding var scannedStrings: [String]
+    @Binding var scannedItems: [ScannedItem]
     @Binding var isScanning: Bool
+    @Binding var pendingCode: String?
+        @Binding var isNaming: Bool
 
     func makeUIViewController(context: Context) -> UIViewController {
         context.coordinator.makeViewController()
@@ -112,7 +165,9 @@ struct ScannerView: UIViewControllerRepresentable {
                 if let results = request.results, let payload = results.first?.payloadStringValue {
                     DispatchQueue.main.async {
                         AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
-                        self.parent.scannedStrings.append(payload)
+                        self.parent.pendingCode = payload
+                        self.parent.isNaming = true
+                        
                         self.parent.isScanning = false // Stop scan after detection
                     }
                 }
