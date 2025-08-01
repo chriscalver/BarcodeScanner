@@ -4,19 +4,35 @@ struct NameItemSheet: View {
     @Binding var newName: String
     @Binding var newQuantity: String
     let onSave: () -> Void
+    let onCancel: () -> Void // Add this closure
 
     var body: some View {
-        VStack {
-            Text("Name this item")
+        VStack(spacing: 2) {
+            Image(systemName: "p.square.fill")
+                .font(.system(size: 128))
+                .foregroundColor(.blue)
+            Text("PantryPro")
+                .font(.system(size: 38))
+                .bold()
+                .foregroundColor(.primary)
+                .padding()
+            Text("Name this new item")
+                .font(.headline)
+                .padding(.bottom, 8)
             TextField("Item name", text: $newName)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-             
+                .frame(width: 250)
             TextField("Quantity", text: $newQuantity)
                 .keyboardType(.numberPad)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-            Button("Save", action: onSave)
-                .disabled(newName.isEmpty || Int(newQuantity) == nil)
-                .padding()
+                .frame(width: 250)
+            HStack {
+                Button("Cancel", action: onCancel)
+                    .padding()
+                Button("Save", action: onSave)
+                    .disabled(newName.isEmpty || Int(newQuantity) == nil)
+                    .padding()
+            }
         }
         .padding()
     }
@@ -24,8 +40,9 @@ struct NameItemSheet: View {
 
 #Preview {
     NameItemSheet(
-        newName: .constant("Sample Item"),
-        newQuantity: .constant("1"),
-        onSave: { print("Saved!") }
+        newName: .constant("Item name"),
+        newQuantity: .constant("qty"),
+        onSave: { print("Saved!") },
+        onCancel: { print("Cancelled!") }
     )
 }
