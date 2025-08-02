@@ -5,7 +5,6 @@ import AudioToolbox
 
 enum NavigationTarget: Hashable, Identifiable {
     case scannedItems
-
     var id: Self { self }
 }
 
@@ -18,7 +17,8 @@ struct ContentView: View {
     @State private var isScanning: Bool = false
     @State private var navigationTarget: NavigationTarget?
     @State private var showCheckmark: Bool = false
-    @State private var isLoading: Bool = true // New state
+    @State private var isLoading: Bool = true
+    @State private var showDuplicateAlert: Bool = false
 
     var body: some View {
         ZStack {
@@ -27,9 +27,7 @@ struct ContentView: View {
                     Spacer()
                     ProgressView("Loading PantryPro...")
                         .progressViewStyle(CircularProgressViewStyle())
-//                        .font(.title)
                         .foregroundColor(.primary)
-                   
                     Spacer()
                 }
                 .onAppear {
@@ -46,7 +44,25 @@ struct ContentView: View {
                             ScannerView(
                                 scannedItems: $scannedItems,
                                 isScanning: $isScanning,
-                                pendingCode: $pendingCode,
+                                pendingCode: Binding(
+                                    get: { pendingCode },
+                                    set: { code in
+                                        if let code = code {
+                                            if scannedItems.contains(where: { $0.code == code }) {
+                                                isScanning = false
+                                                isNaming = false
+                                                pendingCode = nil
+                                                // Use a slightly longer delay to ensure the scanner sheet is fully dismissed
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                                    showDuplicateAlert = true
+                                                }
+                                            } else {
+                                                pendingCode = code
+                                                isNaming = true
+                                            }
+                                        }
+                                    }
+                                ),
                                 isNaming: $isNaming
                             )
                             .edgesIgnoringSafeArea(.all)
@@ -73,7 +89,6 @@ struct ContentView: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                                     withAnimation {
                                         showCheckmark = true
-                                        AudioServicesPlaySystemSound(1111)
                                     }
                                 }
                             }
@@ -87,7 +102,13 @@ struct ContentView: View {
                             }
                             .padding()
                             Button(isScanning ? "Stop Scan" : "Start Scan") {
-                                isScanning.toggle()
+                                if isScanning {
+                                    isScanning = false
+                                } else {
+                                    pendingCode = nil
+                                    isNaming = false
+                                    isScanning = true
+                                }
                             }
                             .padding()
                             .background(isScanning ? Color.red : Color.blue)
@@ -130,11 +151,10 @@ struct ContentView: View {
                 }
             }
         }
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+        .alert("Duplicate Barcode", isPresented: $showDuplicateAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("This barcode has already been added.")
+        }
     }
 }
