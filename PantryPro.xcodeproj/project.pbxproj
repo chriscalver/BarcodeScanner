@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		0E1A30EB2E39CE3E003CA531 /* BarcodeScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BarcodeScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E1A30EB2E39CE3E003CA531 /* PantryPro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PantryPro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0E1A30ED2E39CE3E003CA531 /* BarcodeScanner */ = {
+		0E1A30ED2E39CE3E003CA531 /* PantryPro */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BarcodeScanner;
+			path = PantryPro;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		0E1A30E22E39CE3E003CA531 = {
 			isa = PBXGroup;
 			children = (
-				0E1A30ED2E39CE3E003CA531 /* BarcodeScanner */,
+				0E1A30ED2E39CE3E003CA531 /* PantryPro */,
 				0E1A30EC2E39CE3E003CA531 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +40,7 @@
 		0E1A30EC2E39CE3E003CA531 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0E1A30EB2E39CE3E003CA531 /* BarcodeScanner.app */,
+				0E1A30EB2E39CE3E003CA531 /* PantryPro.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0E1A30EA2E39CE3E003CA531 /* BarcodeScanner */ = {
+		0E1A30EA2E39CE3E003CA531 /* PantryPro */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0E1A30F62E39CE3F003CA531 /* Build configuration list for PBXNativeTarget "BarcodeScanner" */;
+			buildConfigurationList = 0E1A30F62E39CE3F003CA531 /* Build configuration list for PBXNativeTarget "PantryPro" */;
 			buildPhases = (
 				0E1A30E72E39CE3E003CA531 /* Sources */,
 				0E1A30E82E39CE3E003CA531 /* Frameworks */,
@@ -61,13 +61,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				0E1A30ED2E39CE3E003CA531 /* BarcodeScanner */,
+				0E1A30ED2E39CE3E003CA531 /* PantryPro */,
 			);
-			name = BarcodeScanner;
+			name = PantryPro;
 			packageProductDependencies = (
 			);
 			productName = BarcodeScanner;
-			productReference = 0E1A30EB2E39CE3E003CA531 /* BarcodeScanner.app */;
+			productReference = 0E1A30EB2E39CE3E003CA531 /* PantryPro.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 0E1A30E62E39CE3E003CA531 /* Build configuration list for PBXProject "BarcodeScanner" */;
+			buildConfigurationList = 0E1A30E62E39CE3E003CA531 /* Build configuration list for PBXProject "PantryPro" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0E1A30EA2E39CE3E003CA531 /* BarcodeScanner */,
+				0E1A30EA2E39CE3E003CA531 /* PantryPro */,
 			);
 		};
 /* End PBXProject section */
@@ -307,7 +307,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0E1A30E62E39CE3E003CA531 /* Build configuration list for PBXProject "BarcodeScanner" */ = {
+		0E1A30E62E39CE3E003CA531 /* Build configuration list for PBXProject "PantryPro" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0E1A30F42E39CE3F003CA531 /* Debug */,
@@ -316,7 +316,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		0E1A30F62E39CE3F003CA531 /* Build configuration list for PBXNativeTarget "BarcodeScanner" */ = {
+		0E1A30F62E39CE3F003CA531 /* Build configuration list for PBXNativeTarget "PantryPro" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0E1A30F72E39CE3F003CA531 /* Debug */,

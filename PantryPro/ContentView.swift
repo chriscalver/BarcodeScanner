@@ -81,7 +81,7 @@ struct ContentView: View {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 40))
                                         .foregroundColor(.green)
-                                        .offset(x: -7, y: -90)
+                                        .offset(x: -9, y: -90)
                                         .transition(.opacity)
                                 }
                             }
@@ -156,5 +156,10 @@ struct ContentView: View {
         } message: {
             Text("This barcode has already been added.")
         }
+    }
+}
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
