@@ -3,8 +3,12 @@ import AVFoundation
 import Vision
 import AudioToolbox
 
+// Add this import for the API service
+import Combine
+
 enum NavigationTarget: Hashable, Identifiable {
     case scannedItems
+    case apiPantry
     var id: Self { self }
 }
 
@@ -13,12 +17,36 @@ struct ContentView: View {
     @State private var pendingCode: String? = nil
     @State private var isNaming: Bool = false
     @State private var newName: String = ""
+    @State private var newDescription: String = "" // Added for description binding
     @State private var newQuantity: String = ""
+    @State private var newSize: String = "" // Added for size binding
+    @State private var newLocation: String = "" // Added for location binding
+    @State private var newIsHot: Bool = false // Added for isHot binding
     @State private var isScanning: Bool = false
     @State private var navigationTarget: NavigationTarget?
     @State private var showCheckmark: Bool = false
     @State private var isLoading: Bool = true
     @State private var showDuplicateAlert: Bool = false
+    @State private var lastDuplicateCode: String? = nil // Track last duplicate code
+    
+    // Refactored: handle pending code logic in a separate function
+    private func handlePendingCode(_ code: String?) {
+        if let code = code {
+            if scannedItems.contains(where: { $0.code == code }) {
+                isScanning = false
+                isNaming = false
+                pendingCode = nil
+                lastDuplicateCode = code // Store duplicate code
+                // Use a slightly longer delay to ensure the scanner sheet is fully dismissed
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    showDuplicateAlert = true
+                }
+            } else {
+                pendingCode = code
+                isNaming = true
+            }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -46,22 +74,7 @@ struct ContentView: View {
                                 isScanning: $isScanning,
                                 pendingCode: Binding(
                                     get: { pendingCode },
-                                    set: { code in
-                                        if let code = code {
-                                            if scannedItems.contains(where: { $0.code == code }) {
-                                                isScanning = false
-                                                isNaming = false
-                                                pendingCode = nil
-                                                // Use a slightly longer delay to ensure the scanner sheet is fully dismissed
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                                                    showDuplicateAlert = true
-                                                }
-                                            } else {
-                                                pendingCode = code
-                                                isNaming = true
-                                            }
-                                        }
-                                    }
+                                    set: { handlePendingCode($0) }
                                 ),
                                 isNaming: $isNaming
                             )
@@ -114,26 +127,48 @@ struct ContentView: View {
                             .background(isScanning ? Color.red : Color.blue)
                             .foregroundColor(.white)
                             .clipShape(Capsule())
+                            Button("View Online Pantry") {
+                                navigationTarget = nil // Reset to avoid stale navigation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    navigationTarget = .apiPantry
+                                }
+                            }
+                            .padding()
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
                         }
                         .padding()
                     }
                     .sheet(isPresented: $isNaming) {
                         NameItemSheet(
                             newName: $newName,
+                            newDescription: $newDescription, // Pass the binding
                             newQuantity: $newQuantity,
+                            newSize: $newSize,
+                            newLocation: $newLocation,
+                            newIsHot: $newIsHot, // Pass the binding
                             onSave: {
                                 if let code = pendingCode, let qty = Int(newQuantity) {
-                                    scannedItems.append(ScannedItem(code: code, name: newName, quantity: qty))
+                                    scannedItems.append(ScannedItem(code: code, name: newName, description: newDescription, quantity: qty, size: newSize, location: newLocation, isHot: newIsHot))
                                     navigationTarget = .scannedItems
                                 }
                                 newName = ""
+                                newDescription = "" // Clear on save
                                 newQuantity = ""
+                                newSize = ""
+                                newLocation = ""
+                                newIsHot = false // Clear on save
                                 pendingCode = nil
                                 isNaming = false
                             },
                             onCancel: {
                                 newName = ""
+                                newDescription = "" // Clear on cancel
                                 newQuantity = ""
+                                newSize = ""
+                                newLocation = ""
+                                newIsHot = false // Clear on cancel
                                 pendingCode = nil
                                 isNaming = false
                             }
@@ -142,7 +177,9 @@ struct ContentView: View {
                     .navigationDestination(item: $navigationTarget) { target in
                         switch target {
                         case .scannedItems:
-                            ScannedItemsList(items: $scannedItems)
+                            ScannedItemsList(items: $scannedItems, highlightedCode: lastDuplicateCode)
+                        case .apiPantry:
+                            PantryListView()
                         }
                     }
                 }
@@ -152,12 +189,87 @@ struct ContentView: View {
             }
         }
         .alert("Duplicate Barcode", isPresented: $showDuplicateAlert) {
+            Button("View Item") {
+                navigationTarget = .scannedItems
+                showDuplicateAlert = false
+            }
             Button("OK", role: .cancel) { }
         } message: {
             Text("This barcode has already been added.")
         }
     }
 }
+
+struct PantryListView: View {
+    @StateObject private var apiService = PantryAPIService()
+    @State private var sendResult: String? = nil
+    @State private var isSending: Bool = false
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Button(action: {
+                    isSending = true
+                    apiService.sendMockPantryItem { result in
+                        isSending = false
+                        switch result {
+                        case .success:
+                            sendResult = "Mock item sent successfully!"
+                            apiService.fetchPantryItems() // Refresh list
+                        case .failure(let error):
+                            sendResult = "Failed to send: \(error.localizedDescription)"
+                        }
+                    }
+                }) {
+                    if isSending {
+                        ProgressView()
+                    } else {
+                        Text("Send Mock Item")
+                    }
+                }
+                .padding()
+                .background(Color.orange)
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+                if let sendResult = sendResult {
+                    Text(sendResult)
+                        .foregroundColor(sendResult.contains("success") ? .green : .red)
+                        .padding(.bottom)
+                }
+                List(apiService.items) { item in
+                    VStack(alignment: .leading) {
+                        Text(item.name)
+                            .font(.headline)
+                        Text(item.description)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        HStack {
+                            Text("Location: \(item.location)")
+                            if item.isHot {
+                                Image(systemName: "flame.fill").foregroundColor(.red)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .navigationTitle("Pantry API Items")
+                .onAppear {
+                    apiService.fetchPantryItems()
+                }
+                .overlay(
+                    Group {
+                        if let error = apiService.errorMessage {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .padding()
+                        }
+                    }, alignment: .bottom
+                )
+            }
+        }
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
