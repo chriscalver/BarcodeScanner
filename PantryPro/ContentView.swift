@@ -84,17 +84,13 @@ struct ContentView: View {
         print("[DEBUG] allBarcodes at duplicate check: \(allBarcodes)")
         if !normalized.isEmpty {
             print("[DEBUG] Normalized code: \(normalized)")
+            // Check for duplicates here before showing naming sheet
             if allBarcodes.contains(normalized) {
-                print("[DEBUG] Duplicate code detected: \(normalized)")
-                isScanning = false
-                isNaming = false
+                print("[DEBUG] Duplicate barcode detected in handlePendingCode")
+                showDuplicateAlert = true
                 pendingCode = nil
-                lastDuplicateCode = normalized
-                showAddErrorAlert = false
-                showDuplicateAlert = true // Set immediately, no delay
                 return
             }
-            print("[DEBUG] New code, presenting naming sheet: \(normalized)")
             pendingCode = normalized
             isNaming = true
             print("[DEBUG] Naming sheet should now be visible")
@@ -111,8 +107,8 @@ struct ContentView: View {
     // MARK: - Main Content View
     private var mainContent: some View {
         VStack(spacing: 16) {
-            Spacer()
-            HStack(spacing: 8) {
+            
+            HStack(spacing: 0) {
                 Text(userName)
                     .font(.system(size: 58, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
@@ -127,40 +123,16 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Edit Name")
             }
+            .padding(.top, 100)
             logoWithCheckmark
             Text("PantryPro")
                 .font(.system(size: 32))
                 .bold()
                 .foregroundColor(.primary)
-            barcodesDebugView
-            Spacer()
+            Spacer(minLength: 16)
             mainButtons
         }
-        .padding()
-    }
-
-    private var barcodesDebugView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("All Barcodes (Debug):")
-                    .font(.headline)
-                if allBarcodes.isEmpty {
-                    Text("No barcodes loaded.")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .padding(.leading, 8)
-                } else {
-                    ForEach(allBarcodes, id: \.self) { barcode in
-                        Text(barcode)
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .padding(.leading, 8)
-                    }
-                }
-            }
-            .padding(.vertical, 8)
-        }
-        .frame(maxHeight: 120)
+        .padding([.leading, .trailing, .bottom]) // Remove top padding
     }
 
     private var mainButtons: some View {
@@ -187,6 +159,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             if isLoading {
+                // Loading screen should appear immediately
                 VStack {
                     Spacer()
                     ProgressView("Loading PantryPro...")
@@ -194,13 +167,16 @@ struct ContentView: View {
                         .foregroundColor(.primary)
                     Spacer()
                 }
+                // Move .onAppear here to ensure loading logic starts as soon as the loading screen is rendered
                 .onAppear {
+                    // Start loading immediately, no delay before showing loading screen
+                    pantryAPIService.fetchPantryItems()
+                    // Delay hiding the loading screen until data is ready
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         withAnimation {
                             isLoading = false
                         }
                     }
-                    pantryAPIService.fetchPantryItems()
                 }
             } else {
                 NavigationStack {
