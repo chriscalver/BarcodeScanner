@@ -7,7 +7,6 @@ struct ScannerView: UIViewControllerRepresentable {
     @Binding var scannedItems: [ScannedItem]
     @Binding var isScanning: Bool
     @Binding var pendingCode: String?
-    @Binding var isNaming: Bool
 
     func makeUIViewController(context: Context) -> UIViewController {
         context.coordinator.makeViewController()
@@ -79,7 +78,6 @@ struct ScannerView: UIViewControllerRepresentable {
                     DispatchQueue.main.async {
                         AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
                         self.parent.pendingCode = payload
-                        self.parent.isNaming = true
                         self.parent.isScanning = false
                     }
                 }

@@ -1,17 +1,24 @@
 import SwiftUI
 
+struct ErrorMessage: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
 struct ScannedItemsList: View {
-    @Binding var items: [ScannedItem]
-    var highlightedCode: String? = nil // Accept highlightedCode
-    @State private var editingItem: ScannedItem?
+    @ObservedObject var pantryAPIService: PantryAPIService
+    var highlightedCode: String? = nil
+    @State private var editingItem: PantryItem? = nil
     @State private var editedName: String = ""
-    @State private var editedDescription: String = "" // Added for description editing
-    @State private var editedQuantity: String = ""
-    @State private var editedSize: String = "" // Added for size editing
-    @State private var editedLocation: String = "" // Added for location editing
-    @State private var editedIsHot: Bool = false // Added for isHot editing
-    @State private var deleteIndexSet: IndexSet?
-    @State private var showDeleteAlert = false
+    @State private var editedDescription: String = ""
+    @State private var editedLocation: String = ""
+    @State private var editedSize: String = ""
+    @State private var editedIsHot: Bool = false
+    @State private var errorMessage: ErrorMessage? = nil
+    @State private var itemToDelete: PantryItem? = nil
+    @State private var showDeleteAlert: Bool = false
+
+    var items: [PantryItem] { pantryAPIService.items }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -27,144 +34,149 @@ struct ScannedItemsList: View {
                 Text("Current Items")
                     .font(.title2)
                 if items.isEmpty {
-                    Text("No items scanned yet.")
+                    Text("No items in pantry.")
                         .foregroundColor(.secondary)
                 }
             }
             List {
                 ForEach(items) { item in
-                    HStack {
-                        VStack(alignment: .leading) {
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading) { // Left align horizontally
                             Text(item.name)
+                                .font(.headline)
+                            Text(item.description)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            HStack {
+                                Text("Location: \(item.location)")
+                                if item.isHot {
+                                    Image(systemName: "flame.fill").foregroundColor(.red)
+                                }
+                            }
+                            Text("Barcode: \(item.extraStrOne)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         }
                         Spacer()
-                        Text("Qty: \(item.quantity)")
-                        Button("Edit") {
-                            editedName = item.name
-                            editedDescription = item.description
-                            editedQuantity = "\(item.quantity)"
-                            editedSize = item.size
-                            editedLocation = item.location
-                            editedIsHot = item.isHot
-                            editingItem = item
-                        }
-                        .buttonStyle(.bordered)
-                        Button("Delete") {
-                            if let idx = items.firstIndex(where: { $0.id == item.id }) {
-                                deleteIndexSet = IndexSet(integer: idx)
+                        VStack(spacing: 10) {
+                            Spacer()
+                            Button(action: {
+                                editedName = item.name
+                                editedDescription = item.description
+                                editedLocation = item.location
+                                editedSize = item.size
+                                editedIsHot = item.isHot
+                                editingItem = item
+                            }) {
+                                Image(systemName: "pencil")
+                                    .foregroundColor(.blue)
+                                    .font(.title2)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            Button(action: {
+                                itemToDelete = item
                                 showDeleteAlert = true
+                            }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                                    .font(.title2)
                             }
+                            .buttonStyle(BorderlessButtonStyle())
+                            Spacer()
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.red)
                     }
-                    .id(item.code) // Set id for scroll
-                    .background(
-                        (highlightedCode != nil && item.code == highlightedCode) ? Color.yellow.opacity(0.3) : Color.clear
-                    )
-                }
-                .onDelete { indexSet in
-                    deleteIndexSet = indexSet
-                    showDeleteAlert = true
+                    .padding(.vertical, 4)
                 }
             }
-            .onAppear {
-                if let code = highlightedCode, let match = items.first(where: { $0.code == code }) {
-                    withAnimation {
-                        proxy.scrollTo(match.code, anchor: .center)
+            .sheet(item: $editingItem) { editingItem in
+                NavigationView {
+                    Form {
+                        Section(header: Text("Edit Item")) {
+                            VStack(alignment: .leading) {
+                                Text("Name")
+                                    .font(.caption)
+                                TextField("Name", text: $editedName)
+                            }
+                            VStack(alignment: .leading) {
+                                Text("Description")
+                                    .font(.caption)
+                                TextField("Description", text: $editedDescription)
+                            }
+                            VStack(alignment: .leading) {
+                                Text("Location")
+                                    .font(.caption)
+                                TextField("Location", text: $editedLocation)
+                            }
+                            VStack(alignment: .leading) {
+                                Text("Size")
+                                    .font(.caption)
+                                TextField("Size", text: $editedSize)
+                            }
+                            Toggle(isOn: $editedIsHot) {
+                                Text("Hot")
+                            }
+                        }
                     }
+                    .navigationBarTitle("Edit Item", displayMode: .inline)
+                    .navigationBarItems(leading: Button("Cancel") {
+                        self.editingItem = nil
+                    }, trailing: Button("Save") {
+                        // Set lastUpdated to current time in required format
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+                        let nowString = formatter.string(from: Date())
+                        let updatedItem = PantryItem(
+                            id: editingItem.id,
+                            name: editedName,
+                            description: editedDescription,
+                            location: editedLocation,
+                            imageUrl: editingItem.imageUrl,
+                            imageName: editingItem.imageName,
+                            size: editedSize,
+                            extraStrOne: editingItem.extraStrOne,
+                            extraStrTwo: editingItem.extraStrTwo,
+                            isActive: editingItem.isActive,
+                            extraIntOne: editingItem.extraIntOne,
+                            extraIntTwo: editingItem.extraIntTwo,
+                            lastPurchase: editingItem.lastPurchase, // keep original
+                            lastUpdated: nowString, // update to now
+                            isHot: editedIsHot
+                        )
+                        pantryAPIService.updatePantryItem(updatedItem) { result in
+                            switch result {
+                            case .success:
+                                pantryAPIService.fetchPantryItems()
+                                self.editingItem = nil
+                            case .failure(let error):
+                                errorMessage = ErrorMessage(message: error.localizedDescription)
+                            }
+                        }
+                    })
                 }
             }
-            .alert("Delete Item?", isPresented: $showDeleteAlert, actions: {
-                Button("Delete", role: .destructive) {
-                    if let indexSet = deleteIndexSet {
-                        items.remove(atOffsets: indexSet)
-                    }
-                    deleteIndexSet = nil
-                }
-                Button("Cancel", role: .cancel) {
-                    deleteIndexSet = nil
-                }
-            }, message: {
-                Text("Are you sure you want to delete this item?")
-            })
-            .sheet(item: $editingItem, onDismiss: {
-                editedName = ""
-                editedDescription = ""
-                editedQuantity = ""
-                editedSize = ""
-                editedLocation = ""
-                editedIsHot = false
-            }) { item in
-                VStack(spacing: 6) {
-                    Image(systemName: "p.square.fill")
-                        .font(.system(size: 128))
-                        .foregroundColor(.blue)
-                        .padding(.top, 16)
-                    Text("PantryPro")
-                        .font(.system(size: 38))
-                        .bold()
-                        .foregroundColor(.primary)
-                    Text("Edit Item")
-                        .font(.title2)
-                        .bold()
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Name")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("Name", text: $editedName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 250)
-                        Text("Description")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("Description", text: $editedDescription)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 250)
-                        Text("Quantity")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("Quantity", text: $editedQuantity)
-                            .keyboardType(.numberPad)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 250)
-                        Text("Size")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("Size", text: $editedSize)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 250)
-                        Text("Location")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        TextField("Location", text: $editedLocation)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 250)
-                        Toggle("Is Hot", isOn: $editedIsHot)
-                            .frame(width: 250)
-                            .padding(.vertical, 8)
-                    }
-                    HStack(spacing: 1){
-                        Button("Save") {
-                            if let idx = items.firstIndex(where: { $0.id == item.id }),
-                               let qty = Int(editedQuantity) {
-                                items[idx].name = editedName
-                                items[idx].description = editedDescription
-                                items[idx].quantity = qty
-                                items[idx].size = editedSize
-                                items[idx].location = editedLocation
-                                items[idx].isHot = editedIsHot
+            .alert(item: $errorMessage) { msg in
+                Alert(title: Text("Error"), message: Text(msg.message), dismissButton: .default(Text("OK")))
+            }
+            .alert(isPresented: $showDeleteAlert) {
+                Alert(
+                    title: Text("Delete Item"),
+                    message: Text("Are you sure you want to delete this item?"),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if let item = itemToDelete {
+                            pantryAPIService.deletePantryItem(id: item.id) { result in
+                                switch result {
+                                case .success:
+                                    itemToDelete = nil
+                                case .failure(let error):
+                                    errorMessage = ErrorMessage(message: error.localizedDescription)
+                                }
                             }
-                            editingItem = nil
                         }
-                        .buttonStyle(.borderedProminent)
-                        Button("Cancel") {
-                            editingItem = nil
-                        }
-                        .buttonStyle(.bordered)
+                    },
+                    secondaryButton: .cancel {
+                        itemToDelete = nil
                     }
-                }
-                .padding()
+                )
             }
         }
     }
