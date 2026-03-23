@@ -1,6 +1,6 @@
 import Foundation
 
-struct PantryItem: Codable, Identifiable, Equatable {
+struct PantryItem: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let name: String
     let description: String
@@ -23,6 +23,7 @@ class PantryAPIService: ObservableObject {
     @Published var errorMessage: String? = nil
     
     func fetchPantryItems() {
+        print("[DEBUG] PantryAPIService: fetchPantryItems called")
         guard let url = URL(string: "https://www.chriscalver.com/ApiTest/api/Pantry") else {
             self.errorMessage = "Invalid URL"
             return
@@ -30,23 +31,31 @@ class PantryAPIService: ObservableObject {
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async {
+                    print("[DEBUG] PantryAPIService: network error: \(error.localizedDescription)")
                     self.errorMessage = error.localizedDescription
                 }
                 return
             }
             guard let data = data else {
                 DispatchQueue.main.async {
+                    print("[DEBUG] PantryAPIService: no data returned")
                     self.errorMessage = "No data returned"
                 }
                 return
             }
             do {
                 let decoded = try JSONDecoder().decode([PantryItem].self, from: data)
+                if let http = response as? HTTPURLResponse {
+                    print("[DEBUG] PantryAPIService: HTTP status: \(http.statusCode), items decoded: \(decoded.count)")
+                } else {
+                    print("[DEBUG] PantryAPIService: items decoded: \(decoded.count)")
+                }
                 DispatchQueue.main.async {
                     self.items = decoded
                 }
             } catch {
                 DispatchQueue.main.async {
+                    print("[DEBUG] PantryAPIService: decoding error: \(error.localizedDescription)")
                     self.errorMessage = "Decoding error: \(error.localizedDescription)"
                 }
             }

@@ -108,32 +108,18 @@ struct ContentView: View {
     private var mainContent: some View {
         VStack(spacing: 16) {
             
-            HStack(spacing: 0) {
-                Text(userName)
-                    .font(.system(size: 58, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-                Button(action: {
-                    tempName = userName
-                    showNamePrompt = true
-                }) {
-                    Image(systemName: "pencil")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                        .padding(.top, 8)
-                }
-                .accessibilityLabel("Edit Name")
-            }
-            .padding(.top, 100)
-            logoWithCheckmark
-            Text("PantryPro")
-                .font(.system(size: 32))
-                .bold()
-                .foregroundColor(.primary)
-            Spacer(minLength: 16)
-            mainButtons
-        }
-        .padding([.leading, .trailing, .bottom]) // Remove top padding
-    }
+            // Removed top name header; preserve spacing below
+            Spacer().frame(height: 100)
+             logoWithCheckmark
+             Text("PantryPro")
+                 .font(.system(size: 32))
+                 .bold()
+                 .foregroundColor(.primary)
+             Spacer(minLength: 16)
+             mainButtons
+         }
+         .padding([.leading, .trailing, .bottom]) // Remove top padding
+     }
 
     private var mainButtons: some View {
         VStack(spacing: 8) {
@@ -229,9 +215,6 @@ struct ContentView: View {
                     pantryAPIService.fetchPantryItems()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         updateBarcodes()
-                    }
-                    if userName.isEmpty {
-                        showNamePrompt = true
                     }
                 }
                 .onChange(of: pantryAPIService.items) { _ in
@@ -421,7 +404,7 @@ private struct LogoWithCheckmarkView: View {
             if showCheckmark {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(.green)
+                    .foregroundColor(.appGreen)
                     .offset(x: -9, y: -90)
                     .transition(.opacity)
             }

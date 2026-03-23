@@ -72,7 +72,7 @@ struct NameItemSheet: View {
                                 }
                                 HStack {
                                     Image(systemName: "map")
-                                        .foregroundColor(.green)
+                                        .foregroundColor(.appGreen)
                                     TextField("Location", text: $newLocation)
                                         .textFieldStyle(RoundedBorderTextFieldStyle())
                                         .focused($focusedField, equals: .location)
